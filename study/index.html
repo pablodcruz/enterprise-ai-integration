@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Practice MCP, agents, RAG, evaluation, model API, and AI operations concepts."
+    />
+    <title>Enterprise AI Study Lab</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div>
+        <p class="eyebrow">Enterprise AI Integration Labs</p>
+        <h1>Study Lab</h1>
+        <p class="lede">Practice architecture, security, evaluation, and troubleshooting decisions.</p>
+      </div>
+      <a class="back-link" href="../README.md">Repository home</a>
+    </header>
+
+    <main>
+      <section class="controls" aria-label="Study controls">
+        <label>
+          Mode
+          <select id="mode-select">
+            <option value="practice">Practice</option>
+            <option value="flashcards">Flashcards</option>
+            <option value="smart-review">Smart Review</option>
+          </select>
+        </label>
+
+        <label>
+          Topic
+          <select id="topic-select">
+            <option value="all">All topics</option>
+            <option value="model-api">Model APIs</option>
+            <option value="mcp">MCP</option>
+            <option value="agents">Agents</option>
+            <option value="rag">RAG</option>
+            <option value="evaluation">Evaluation</option>
+            <option value="operations">Operations</option>
+          </select>
+        </label>
+
+        <button id="start-button" type="button">Start session</button>
+        <button id="reset-button" class="secondary" type="button">Reset progress</button>
+      </section>
+
+      <section class="stats" aria-live="polite">
+        <div><span id="position">0 / 0</span><small>Session</small></div>
+        <div><span id="score">0</span><small>Correct</small></div>
+        <div><span id="mastered">0</span><small>Mastered</small></div>
+        <div><span id="review-count">0</span><small>Needs review</small></div>
+      </section>
+
+      <section id="empty-state" class="panel empty-state">
+        <h2>Choose a mode and begin</h2>
+        <p>
+          Practice gives immediate feedback. Flashcards use self-rating. Smart Review prioritizes
+          previously missed questions.
+        </p>
+      </section>
+
+      <article id="question-card" class="panel question-card" hidden>
+        <div class="question-meta">
+          <span id="topic-badge" class="badge"></span>
+          <span id="difficulty-badge" class="badge muted"></span>
+        </div>
+        <h2 id="question-text"></h2>
+        <pre id="code-sample" hidden><code></code></pre>
+
+        <div id="answer-list" class="answer-list"></div>
+
+        <div id="flashcard-actions" class="flashcard-actions" hidden>
+          <button id="reveal-button" type="button">Reveal answer</button>
+          <div id="rating-buttons" hidden>
+            <button id="knew-button" type="button">I knew it</button>
+            <button id="review-button" class="secondary" type="button">Review again</button>
+          </div>
+        </div>
+
+        <aside id="feedback" class="feedback" hidden>
+          <strong id="feedback-title"></strong>
+          <p id="feedback-text"></p>
+          <a id="reference-link" target="_blank" rel="noreferrer">Review the source note</a>
+        </aside>
+
+        <div class="question-actions">
+          <button id="next-button" type="button" disabled>Next question</button>
+        </div>
+      </article>
+
+      <section id="complete-state" class="panel empty-state" hidden>
+        <h2>Session complete</h2>
+        <p id="complete-message"></p>
+        <button id="restart-button" type="button">Run another session</button>
+      </section>
+    </main>
+
+    <footer>
+      <p>Progress remains in this browser. No account or analytics service is used.</p>
+    </footer>
+
+    <script src="questions/bank.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
