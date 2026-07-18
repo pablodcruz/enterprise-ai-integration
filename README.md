@@ -87,4 +87,4 @@ The `projects/` directory contains requirements, acceptance criteria, architectu
 
 ## Current Status
 
-Labs 1–5 now include learner starters, deterministic fixtures, progressive hints, executable reference solutions, and automated tests. The next implementation phase is Engineering Operations MCP, which will integrate these patterns with a real GitHub sandbox and durable approval workflow.
+Labs 1-5 include learner starters, deterministic fixtures, progressive hints, executable reference solutions, and automated tests. Engineering Operations MCP now has a complete recorded read surface covering issues, pull requests, and workflow investigation. Its next phase adds a real GitHub App adapter while retaining deterministic recorded-mode CI.
