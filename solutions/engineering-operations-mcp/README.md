@@ -2,20 +2,21 @@
 
 > **Solution spoiler:** attempt the [Project 1 requirements](../../projects/project-01-engineering-operations-mcp.md) before comparing your implementation with this one.
 
-This directory contains the first production-shaped vertical slice of Project 1: a TypeScript MCP server that searches a server-allowlisted repository through a deterministic recorded GitHub adapter.
+This directory contains the production-shaped read surface of Project 1: a TypeScript MCP server that investigates issues, pull requests, and workflow failures in a server-allowlisted repository through a deterministic recorded GitHub adapter.
 
-**Implementation status:** Phase 1 complete; the full capstone is not complete.
+**Implementation status:** Phases 1 and 2 complete; the full capstone is not complete.
 
-The slice is intentionally narrow. It proves one complete path before authentication, a real GitHub App, persisted approvals, writes, and telemetry are added.
+The implementation now proves the complete read-only investigation path before authentication, a real GitHub App, persisted approvals, writes, and telemetry are added. Learners can use the [Phase 2 guided walkthrough](docs/phase-02-read-tools.md) for concepts, tool examples, expected outputs, exercises, and hints.
 
 ## What works now
 
 - Stateless Streamable HTTP MCP endpoint at `/mcp`
-- One read-only tool: `search_issues`
+- Five read-only tools: `search_issues`, `get_issue`, `list_pull_requests`, `get_workflow_status`, and `list_failed_workflow_jobs`
 - Server-owned repository allowlist
 - Explicit Host-header allowlist for the local/container profile
-- Bounded query, label, state, and result-count inputs
-- Structured output with issue bodies excluded
+- Bounded query, filter, result-count, and shared pagination inputs
+- Provider workflow states normalized to a small stable vocabulary
+- Structured output with search bodies excluded and detail excerpts explicitly labeled as untrusted
 - Deterministic recorded fixture requiring no credentials
 - Normalized invalid-input, policy, timeout, and upstream errors
 - Health and readiness endpoints
@@ -28,7 +29,7 @@ The slice is intentionally narrow. It proves one complete path before authentica
 
 - Real GitHub API calls or credentials
 - OAuth token validation and per-tool scopes
-- `get_issue`, pull-request, workflow, proposal, or write tools
+- Proposal and write tools
 - PostgreSQL approval and audit storage
 - Human approval and idempotent write execution
 - OpenTelemetry export and behavioral evaluations
@@ -41,11 +42,11 @@ Those omissions are phase boundaries, not hidden features. Do not describe this 
 ```mermaid
 flowchart LR
     Client["MCP Inspector or direct client"] --> HTTP["Stateless Streamable HTTP"]
-    HTTP --> Tool["search_issues schema"]
+    HTTP --> Tool["Five read-tool schemas"]
     Tool --> Policy["Repository allowlist"]
-    Policy --> UseCase["Search use case and deadline"]
+    Policy --> UseCase["Read use cases, deadline, and pagination"]
     UseCase --> Adapter["Recorded GitHub adapter"]
-    Adapter --> Fixture[("Synthetic issue fixture")]
+    Adapter --> Fixture[("Synthetic engineering fixture")]
 ```
 
 The request order is intentional:
@@ -54,7 +55,7 @@ The request order is intentional:
 2. The use case validates again so non-MCP callers receive the same contract.
 3. Repository policy checks untrusted `owner` and `repository` input.
 4. Only an allowed repository reaches the adapter.
-5. The adapter searches recorded data under a bounded deadline.
+5. The adapter reads recorded data under a bounded deadline and bounded page request.
 6. The result is projected into a small output schema before entering model context.
 
 ## Trust boundaries
@@ -64,10 +65,10 @@ The request order is intentional:
 | MCP tool | registered schema and annotations | every tool argument |
 | HTTP host | local Host-header allowlist | incoming `Host` header |
 | Repository policy | `ALLOWED_REPOSITORIES` environment value | owner/repository named by a prompt |
-| Adapter | validated fixture shape | issue title, body, and labels |
+| Adapter | validated fixture shape | issue, pull-request, workflow, and job content |
 | Client response | output schema and error codes | repository content carried inside fields |
 
-The security fixture includes an issue titled `Ignore previous instructions...`. The server returns that title as inert data and excludes its body. It never interprets repository content as a command or expands the tool surface.
+The security fixture includes an issue titled `Ignore previous instructions...`. Search returns only its inert title. Detail lookup returns a bounded body excerpt with `contentTrust: "untrusted_repository_content"`. The server never interprets repository content as a command or expands its tool surface.
 
 ## Why these code comments exist
 
@@ -90,7 +91,7 @@ src/
   http/           Health, readiness, and Streamable HTTP routes
   mcp/            Tool registration and MCP response boundary
   policy/         Server-owned repository allowlist
-  tools/          Application use case and timeout behavior
+  tools/          Application use cases, validation, pagination, and timeout behavior
   bootstrap.ts    Dependency composition
   config.ts       Environment parsing
   index.ts        Process lifecycle
@@ -100,6 +101,7 @@ tests/
   security/       Allowlist and prompt-injection cases
   integration/    HTTP and real MCP transport checks
 fixtures/         Synthetic recorded GitHub data
+docs/             Learner walkthroughs and expected tool-call evidence
 ```
 
 ## Prerequisites
@@ -146,8 +148,8 @@ pnpm verify
 Expected test summary:
 
 ```text
-Test Files  4 passed (4)
-Tests       11 passed (11)
+Test Files  5 passed (5)
+Tests       22 passed (22)
 ```
 
 `pnpm verify` runs three gates:
@@ -185,11 +187,17 @@ Expected health responses:
 {"status":"ready"}
 ```
 
-The inspection result should list only `search_issues` and return two open checkout issues. A shortened result looks like:
+The inspection result should list exactly five read tools and exercise each one. A shortened result looks like:
 
 ```json
 {
-  "toolNames": ["search_issues"],
+  "toolNames": [
+    "search_issues",
+    "get_issue",
+    "list_pull_requests",
+    "get_workflow_status",
+    "list_failed_workflow_jobs"
+  ],
   "search": {
     "mode": "recorded",
     "repository": "acme/engineering-sandbox",
@@ -219,9 +227,13 @@ Expected tool list:
 
 ```text
 search_issues
+get_issue
+list_pull_requests
+get_workflow_status
+list_failed_workflow_jobs
 ```
 
-Call it with:
+Call `search_issues` with:
 
 ```json
 {
@@ -234,31 +246,32 @@ Call it with:
 }
 ```
 
-## Tool contract
+Then follow the [Phase 2 guided walkthrough](docs/phase-02-read-tools.md) to call the other four tools and perform the end-to-end incident investigation.
 
-### Inputs
+## Tool contracts
 
-| Field | Contract |
-| --- | --- |
-| `owner` | valid GitHub-style owner |
-| `repository` | valid repository name and server-allowlisted pair |
-| `query` | 1-120 characters |
-| `state` | `open`, `closed`, or `all`; defaults to `all` |
-| `labels` | at most 10 labels; every supplied label must match |
-| `limit` | integer from 1-20; defaults to 10 |
+| Tool | Required input | Bounded behavior | Safe output |
+| --- | --- | --- | --- |
+| `search_issues` | repository, query | `limit` 1-20 | issue summaries without bodies |
+| `get_issue` | repository, positive `issueNumber` | one issue, 2,000-character body excerpt | selected metadata plus an explicit content-trust label |
+| `list_pull_requests` | repository | `page` 1-10 and `pageSize` 1-20 | relevant PR summaries and `pageInfo` |
+| `get_workflow_status` | repository | optional workflow, branch, normalized status, bounded page | normalized workflow-run summaries and `pageInfo` |
+| `list_failed_workflow_jobs` | repository, positive `runId` | bounded page | only failed jobs and failed steps |
 
-### Outputs
+Every successful result includes a non-secret correlation ID, explicit `recorded` mode, and the canonical repository. Every list result using shared pagination returns:
 
-Each successful result includes:
+```json
+{
+  "pageInfo": {
+    "page": 1,
+    "pageSize": 10,
+    "returned": 2,
+    "hasNextPage": false
+  }
+}
+```
 
-- a non-secret correlation ID;
-- explicit `recorded` mode;
-- the canonical repository;
-- the normalized query;
-- at most 20 issue summaries; and
-- the returned count.
-
-Search results include issue number, title, state, labels, URL, and update time. Bodies are intentionally excluded to reduce model-context exposure and prompt-injection surface.
+Callers should request the next page only when `hasNextPage` is true. The schema prevents page numbers above 10 and page sizes above 20, bounding one investigation to at most 200 list records.
 
 ### Stable error codes
 
@@ -266,6 +279,7 @@ Search results include issue number, title, state, labels, URL, and update time.
 | --- | --- | --- |
 | `INVALID_ARGUMENT` | input violates the application contract | no |
 | `REPOSITORY_NOT_ALLOWED` | repository is outside server policy | no |
+| `RESOURCE_NOT_FOUND` | requested issue or workflow run does not exist | no |
 | `UPSTREAM_TIMEOUT` | adapter exceeded its deadline | yes |
 | `UPSTREAM_FAILURE` | adapter failed without a safe public detail | no |
 
@@ -273,8 +287,8 @@ Search results include issue number, title, state, labels, URL, and update time.
 
 | Test group | What it proves |
 | --- | --- |
-| Contract | bounded output, sorting, filters, invalid limit, timeout |
-| Security | policy runs before adapter; hostile content remains data |
+| Contract | safe projections, normalized statuses, shared pagination, not-found behavior, timeout |
+| Security | policy runs before every adapter path; hostile content remains labeled data |
 | HTTP | liveness/readiness and unsupported methods |
 | MCP integration | real initialize/list/call and controlled denial |
 
@@ -315,6 +329,7 @@ docker compose down
 | `GITHUB_MODE` | `recorded` | only accepted profile in Phase 1 |
 | `HOST` | `127.0.0.1` | local bind address; container overrides to `0.0.0.0` |
 | `PORT` | `8100` | HTTP port |
+| `MCP_HOST_PORT` | `8100` | Docker Compose host port; container still listens on `8100` |
 | `ALLOWED_REPOSITORIES` | `acme/engineering-sandbox` | comma-separated capability boundary |
 | `REQUEST_TIMEOUT_MS` | `1000` | adapter deadline |
 | `RECORDED_FIXTURE_PATH` | bundled fixture | deterministic data source |
@@ -337,7 +352,7 @@ Never place GitHub credentials in `.env.example`, fixtures, tool arguments, logs
 ## Phase roadmap
 
 1. **Completed:** recorded `search_issues` vertical slice.
-2. Add the remaining read tools and a shared bounded-pagination contract.
+2. **Completed:** remaining read tools and shared bounded-pagination contract.
 3. Add a GitHub App adapter against a dedicated sandbox while retaining recorded CI.
 4. Add protected-resource metadata, token validation, and per-tool scopes.
 5. Add PostgreSQL proposals, approvals, audit records, and idempotent writes.

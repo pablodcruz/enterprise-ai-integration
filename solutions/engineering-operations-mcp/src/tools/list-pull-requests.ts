@@ -1,47 +1,49 @@
 import type { GithubOperationsReader } from "../adapters/github-operations-reader.js";
 import {
-  SearchIssuesInputSchema,
-  SearchIssuesOutputSchema,
-  type SearchIssuesOutput,
+  ListPullRequestsInputSchema,
+  ListPullRequestsOutputSchema,
+  type ListPullRequestsOutput,
 } from "../domain/schemas.js";
 import { RepositoryPolicy } from "../policy/repository-policy.js";
 import { parseToolInput, withReadTimeout } from "./shared.js";
 
-export class SearchIssuesUseCase {
+export class ListPullRequestsUseCase {
   constructor(
     private readonly repositoryPolicy: RepositoryPolicy,
     private readonly adapter: GithubOperationsReader,
     private readonly timeoutMs: number,
   ) {}
 
-  async execute(rawInput: unknown, correlationId: string): Promise<SearchIssuesOutput> {
-    const input = parseToolInput(SearchIssuesInputSchema, rawInput);
-
-    // Policy runs before the adapter so denied repositories cannot be probed
-    // through timing, not-found responses, or recorded fixture behavior.
+  async execute(rawInput: unknown, correlationId: string): Promise<ListPullRequestsOutput> {
+    const input = parseToolInput(ListPullRequestsInputSchema, rawInput);
     const repository = this.repositoryPolicy.requireAllowed(input.owner, input.repository);
-    const items = await withReadTimeout(
+    const page = await withReadTimeout(
       (signal) =>
-        this.adapter.searchIssues(
+        this.adapter.listPullRequests(
           {
             repository,
             query: input.query,
             state: input.state,
-            labels: input.labels,
-            limit: input.limit,
+            page: input.page,
+            pageSize: input.pageSize,
           },
           signal,
         ),
       this.timeoutMs,
     );
 
-    return SearchIssuesOutputSchema.parse({
+    return ListPullRequestsOutputSchema.parse({
       correlationId,
       mode: this.adapter.mode,
       repository,
       query: input.query,
-      items,
-      returned: items.length,
+      items: page.items,
+      pageInfo: {
+        page: input.page,
+        pageSize: input.pageSize,
+        returned: page.items.length,
+        hasNextPage: page.hasNextPage,
+      },
     });
   }
 }

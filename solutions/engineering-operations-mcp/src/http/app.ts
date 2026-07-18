@@ -2,14 +2,13 @@ import type { Express, Request, Response } from "express";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
-import type { GithubIssueReader } from "../adapters/github-issue-reader.js";
-import { createMcpServer } from "../mcp/create-server.js";
-import type { SearchIssuesUseCase } from "../tools/search-issues.js";
+import type { GithubOperationsReader } from "../adapters/github-operations-reader.js";
+import { createMcpServer, type ReadToolUseCases } from "../mcp/create-server.js";
 
 export interface HttpDependencies {
   host: string;
-  adapter: GithubIssueReader;
-  searchIssues: SearchIssuesUseCase;
+  adapter: GithubOperationsReader;
+  tools: ReadToolUseCases;
 }
 
 export function createHttpApp(dependencies: HttpDependencies): Express {
@@ -32,7 +31,7 @@ export function createHttpApp(dependencies: HttpDependencies): Express {
   });
 
   app.post("/mcp", async (request: Request, response: Response) => {
-    const server = createMcpServer(dependencies.searchIssues);
+    const server = createMcpServer(dependencies.tools);
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

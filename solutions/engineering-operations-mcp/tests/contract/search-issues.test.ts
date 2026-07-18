@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { GithubIssueReader } from "../../src/adapters/github-issue-reader.js";
-import { useCase } from "../test-helpers.js";
+import { recordedAdapter, useCase } from "../test-helpers.js";
 
 const validInput = {
   owner: "acme",
@@ -43,11 +42,8 @@ describe("search_issues contract", () => {
   });
 
   it("normalizes adapter deadlines into a retryable timeout", async () => {
-    const hangingAdapter: GithubIssueReader = {
-      mode: "recorded",
-      ping: async () => true,
-      searchIssues: async () => new Promise(() => undefined),
-    };
+    const hangingAdapter = recordedAdapter();
+    hangingAdapter.searchIssues = async () => new Promise(() => undefined);
 
     await expect(
       useCase(hangingAdapter, 20).execute(validInput, "req_timeout"),

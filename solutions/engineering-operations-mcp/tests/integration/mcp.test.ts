@@ -17,15 +17,58 @@ describe("Streamable HTTP MCP integration", () => {
     server = undefined;
   });
 
-  it("discovers only the implemented read tool", async () => {
+  it("discovers exactly the five implemented read tools", async () => {
     ({ client, server } = await startMcpClient());
     const result = await client.listTools();
 
-    expect(result.tools.map((tool) => tool.name)).toEqual(["search_issues"]);
-    expect(result.tools[0]?.annotations).toMatchObject({
-      readOnlyHint: true,
-      destructiveHint: false,
-      openWorldHint: false,
+    expect(result.tools.map((tool) => tool.name)).toEqual([
+      "search_issues",
+      "get_issue",
+      "list_pull_requests",
+      "get_workflow_status",
+      "list_failed_workflow_jobs",
+    ]);
+    for (const tool of result.tools) {
+      expect(tool.annotations).toMatchObject({
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      });
+    }
+  });
+
+  it("calls all Phase 2 tools through the real MCP transport", async () => {
+    ({ client, server } = await startMcpClient());
+    const repository = { owner: "acme", repository: "engineering-sandbox" };
+    const calls = [
+      client.callTool({
+        name: "get_issue",
+        arguments: { ...repository, issueNumber: 101 },
+      }),
+      client.callTool({
+        name: "list_pull_requests",
+        arguments: { ...repository, query: "checkout", state: "all", pageSize: 2 },
+      }),
+      client.callTool({
+        name: "get_workflow_status",
+        arguments: { ...repository, pageSize: 2 },
+      }),
+      client.callTool({
+        name: "list_failed_workflow_jobs",
+        arguments: { ...repository, runId: 5004, pageSize: 2 },
+      }),
+    ];
+    const [issue, pullRequests, runs, jobs] = await Promise.all(calls);
+
+    expect(issue?.structuredContent).toMatchObject({ issue: { number: 101 } });
+    expect(pullRequests?.structuredContent).toMatchObject({
+      pageInfo: { returned: 2, hasNextPage: false },
+    });
+    expect(runs?.structuredContent).toMatchObject({ pageInfo: { returned: 2, hasNextPage: true } });
+    expect(jobs?.structuredContent).toMatchObject({
+      runId: 5004,
+      pageInfo: { returned: 2, hasNextPage: false },
     });
   });
 

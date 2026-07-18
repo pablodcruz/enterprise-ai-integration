@@ -1,16 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { GithubIssueReader } from "../../src/adapters/github-issue-reader.js";
-import { useCase } from "../test-helpers.js";
+import { createUseCases, recordedAdapter, useCase } from "../test-helpers.js";
 
 describe("repository and content policy", () => {
   it("denies a repository before the adapter can observe it", async () => {
     const searchIssues = vi.fn(async () => []);
-    const adapter: GithubIssueReader = {
-      mode: "recorded",
-      ping: async () => true,
-      searchIssues,
-    };
+    const adapter = recordedAdapter();
+    adapter.searchIssues = searchIssues;
 
     await expect(
       useCase(adapter).execute(
@@ -48,5 +44,37 @@ describe("repository and content policy", () => {
       "items",
       "returned",
     ]);
+  });
+
+  it("labels a hostile issue body excerpt and does not expand the tool surface", async () => {
+    const result = await createUseCases().getIssue.execute(
+      {
+        owner: "acme",
+        repository: "engineering-sandbox",
+        issueNumber: 103,
+      },
+      "req_hostile_details",
+    );
+
+    expect(result.issue.bodyExcerpt).toContain("Hostile content");
+    expect(result.issue.contentTrust).toBe("untrusted_repository_content");
+    expect(result.issue).not.toHaveProperty("tools");
+  });
+
+  it("denies workflow access before the adapter can observe a run ID", async () => {
+    const adapter = recordedAdapter();
+    const listFailedWorkflowJobs = vi.spyOn(adapter, "listFailedWorkflowJobs");
+
+    await expect(
+      createUseCases(adapter).listFailedWorkflowJobs.execute(
+        {
+          owner: "acme",
+          repository: "private-production",
+          runId: 5004,
+        },
+        "req_denied_run",
+      ),
+    ).rejects.toMatchObject({ code: "REPOSITORY_NOT_ALLOWED" });
+    expect(listFailedWorkflowJobs).not.toHaveBeenCalled();
   });
 });
