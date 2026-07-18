@@ -6,6 +6,8 @@ Reference solutions demonstrate one defensible implementation, not the only corr
 
 ## Solution Map
 
+The implemented [lab reference solutions](labs/README.md) are separate from the capstone workspaces below.
+
 | Requirement | Reference solution |
 | --- | --- |
 | [Engineering Operations MCP](../projects/project-01-engineering-operations-mcp.md) | [engineering-operations-mcp](engineering-operations-mcp/README.md) |

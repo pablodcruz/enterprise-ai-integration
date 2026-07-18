@@ -1,0 +1,11 @@
+{
+  "incidents": [
+    {
+      "incident_id": "INC-1001",
+      "title": "Checkout timeouts in EU region",
+      "service": "checkout",
+      "severity": "SEV2",
+      "status": "open"
+    }
+  ]
+}

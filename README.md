@@ -16,6 +16,7 @@ Choose the path that matches what you want to do:
 | Build a portfolio-scale system | [Project Requirements](projects/README.md) |
 | Compare after completing a project | [Reference Solutions](solutions/README.md) |
 | Follow the recommended sequence | [Learning Path](LEARNING_PATH.md) |
+| Verify Labs 1–5 locally | [Testing Guide](TESTING.md) |
 
 Open the browser-based study application at [study/index.html](study/index.html). It runs without a backend and stores progress only in the local browser.
 
@@ -86,4 +87,4 @@ The `projects/` directory contains requirements, acceptance criteria, architectu
 
 ## Current Status
 
-The curriculum structure, review material, study application, lab sequence, project requirements, and solution contracts are being established first. Reference implementations will be developed project by project, beginning with Engineering Operations MCP.
+Labs 1–5 now include learner starters, deterministic fixtures, progressive hints, executable reference solutions, and automated tests. The next implementation phase is Engineering Operations MCP, which will integrate these patterns with a real GitHub sandbox and durable approval workflow.

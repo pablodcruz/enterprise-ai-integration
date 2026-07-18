@@ -47,3 +47,42 @@ Fix a deliberately broad tool named `call_incident_api(method, path, body)` by r
 - Permission table explaining each tool
 - Debugging log
 - Short explanation: why are narrow tools easier to evaluate and authorize?
+
+## Learner Workflow
+
+**Estimated time:** 75–90 minutes
+
+**Prerequisite:** Complete Lab 1 and review the narrow-tool design section of the MCP notes.
+
+```powershell
+Push-Location labs\starters\lab-02-tool-contracts
+..\..\..\.venv\Scripts\python.exe -m pytest -q
+```
+
+The two starter tests initially fail. Implement bounded search and a proposal-only comment tool. The proposal must not alter the fixture or append a comment.
+
+Verify the reference implementation:
+
+```powershell
+Pop-Location
+Push-Location solutions\labs\lab-02-tool-contracts
+..\..\..\.venv\Scripts\python.exe -m pytest -q
+..\..\..\.venv\Scripts\python.exe -m lab02.cli
+Pop-Location
+```
+
+Expected solution result: `6 passed`. The CLI prints bounded search results and a `pending` proposal with a 64-character payload hash.
+
+## Progressive Hints
+
+<details><summary>Hint 1: Search</summary>
+Normalize the query, filter only declared fields, sort deterministically, then slice to the validated limit. Report whether additional matches were truncated.
+</details>
+
+<details><summary>Hint 2: Canonical proposal</summary>
+Trim the body, serialize only approved fields with sorted keys and compact separators, then hash the canonical bytes with SHA-256.
+</details>
+
+<details><summary>Hint 3: Side effects</summary>
+A draft tool returns intent for later review. It must not share an implementation path that mutates the incident store.
+</details>

@@ -46,3 +46,44 @@ Given the symptom "the model says no tools are available," determine whether the
 - Three sanitized traces
 - Tool-selection test cases
 - Troubleshooting table mapping symptoms to protocol stages
+
+## Learner Workflow
+
+**Estimated time:** 90–120 minutes
+
+**Prerequisite:** A working Lab 3 MCP server.
+
+```powershell
+Push-Location labs\starters\lab-04-mcp-client
+..\..\..\.venv\Scripts\python.exe -m pytest -q
+```
+
+Implement direct discovery and tool invocation first. Then create a Responses remote-MCP configuration with an explicit tool allowlist and approvals enabled.
+
+Verify the solution:
+
+```powershell
+Pop-Location
+Push-Location solutions\labs\lab-04-mcp-client
+..\..\..\.venv\Scripts\python.exe -m pytest -q
+..\..\..\.venv\Scripts\python.exe -m lab04.cli --mode recorded --prompt "Find the checkout incident"
+Pop-Location
+```
+
+Expected solution result: `6 passed`. Recorded mode selects `search_incidents`; conceptual requests select no tool; delete requests are refused.
+
+For manual protocol inspection, start `python -m lab04.demo_server` in one terminal and run `python -m lab04.cli --mode inspect` in another, using the repository virtual-environment interpreter shown above.
+
+## Progressive Hints
+
+<details><summary>Hint 1: Direct client</summary>
+Use `streamable_http_client`, create a `ClientSession`, initialize it, and only then list or call tools.
+</details>
+
+<details><summary>Hint 2: Imported surface</summary>
+Set `allowed_tools` to the exact task surface. Keep `require_approval` set to `always` during this training exercise.
+</details>
+
+<details><summary>Hint 3: Local versus hosted</summary>
+The direct SDK client can reach localhost. The hosted Responses API needs a reachable HTTPS MCP endpoint; a localhost URL should fail configuration validation.
+</details>

@@ -1,0 +1,33 @@
+{
+  "cases": [
+    {
+      "input": "Checkout requests are timing out for EU customers; errors began after the 14:05 deployment.",
+      "output": {
+        "summary": "Checkout timeouts began after the 14:05 deployment",
+        "affected_service": "checkout",
+        "severity": "SEV2",
+        "customer_impact": "EU customers cannot reliably complete checkout",
+        "evidence": [
+          "Checkout requests are timing out",
+          "EU customers are affected",
+          "Errors began after the 14:05 deployment"
+        ],
+        "requires_human_review": true
+      }
+    },
+    {
+      "input": "The internal status dashboard is loading slowly, but all customer APIs remain healthy.",
+      "output": {
+        "summary": "Internal status dashboard is responding slowly",
+        "affected_service": "status-dashboard",
+        "severity": "SEV4",
+        "customer_impact": "No reported customer impact",
+        "evidence": [
+          "Internal dashboard is loading slowly",
+          "Customer APIs remain healthy"
+        ],
+        "requires_human_review": false
+      }
+    }
+  ]
+}

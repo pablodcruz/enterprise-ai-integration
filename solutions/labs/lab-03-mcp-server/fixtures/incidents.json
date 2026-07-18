@@ -1,0 +1,24 @@
+{
+  "incidents": [
+    {
+      "incident_id": "INC-1001",
+      "title": "Checkout timeouts in EU region",
+      "service": "checkout",
+      "severity": "SEV2",
+      "status": "open",
+      "description": "Timeout rate increased after deployment deploy-1405.",
+      "customer_impact": "EU customers may be unable to complete checkout.",
+      "comments": ["Traffic shifted away from one unhealthy instance."]
+    },
+    {
+      "incident_id": "INC-1002",
+      "title": "Delayed invoice exports",
+      "service": "billing",
+      "severity": "SEV3",
+      "status": "monitoring",
+      "description": "Invoice export queue is processing behind schedule.",
+      "customer_impact": "Exports are delayed but no data is lost.",
+      "comments": []
+    }
+  ]
+}
