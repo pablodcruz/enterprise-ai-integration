@@ -1,7 +1,16 @@
-# Lab 5 Starter
+# Lab 5 Starter - MCP Authentication and Scopes
 
-Implement JWT claim validation and per-tool scope enforcement. Invalid, expired, wrong-issuer, and wrong-audience tokens must fail closed. Do not log bearer tokens.
+Use the full [Lab 5 guide](../../lab-05-mcp-authentication-and-scopes.md). It provides the security model, analogous snippets, focused tests, manual commands, expected outputs, hints, and troubleshooting.
 
-```powershell
-..\..\..\.venv\Scripts\python.exe -m pytest -q
+The server, client, local token issuer, metadata endpoint, and integration tests are provided. You implement only two security-critical TODOs in `lab05/auth.py`:
+
+1. validate a JWT and convert valid claims into an MCP `AccessToken`; and
+2. enforce a required scope while distinguishing absent identity from insufficient authority.
+
+From Git Bash:
+
+```bash
+../../../.venv/Scripts/python.exe -m pytest -q -p no:cacheprovider tests
 ```
+
+The untouched starter is expected to report `6 failed, 1 passed`. A completed implementation reports `7 passed`. Use only the synthetic local issuer and data supplied by the lab.

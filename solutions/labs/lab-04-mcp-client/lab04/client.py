@@ -52,7 +52,7 @@ class RecordedModelClient:
     """Deterministic tool-selection examples used for tests and teaching."""
 
     def __init__(self, allowed_tools: list[str] | None = None):
-        self.allowed_tools = set(allowed_tools or DEFAULT_ALLOWED_TOOLS)
+        self.allowed_tools = set(DEFAULT_ALLOWED_TOOLS if allowed_tools is None else allowed_tools)
 
     def run(self, prompt: str) -> RecordedTrace:
         normalized = prompt.casefold()
@@ -75,6 +75,22 @@ class RecordedModelClient:
         return RecordedTrace(prompt, selected, arguments, "tool_selected", f"Selected {selected}.")
 
 
+def build_remote_mcp_config(server_url: str, allowed_tools: list[str]) -> dict[str, Any]:
+    """Create the smallest remote-MCP surface needed by this workflow."""
+    if not server_url.startswith("https://"):
+        raise ValueError("the Responses API requires a reachable HTTPS MCP server")
+    if not allowed_tools:
+        raise ValueError("at least one allowed tool is required")
+    return {
+        "type": "mcp",
+        "server_label": "incident_operations",
+        "server_description": "Synthetic incident investigation and non-executing comment proposals.",
+        "server_url": server_url,
+        "allowed_tools": list(allowed_tools),
+        "require_approval": "always",
+    }
+
+
 class OpenAIRemoteMCPClient:
     """Creates a Responses request that imports an explicitly bounded MCP surface."""
 
@@ -88,15 +104,8 @@ class OpenAIRemoteMCPClient:
         self.client = client or OpenAI(max_retries=2, timeout=45.0)
 
     def tool_config(self, allowed_tools: list[str] | None = None) -> dict[str, Any]:
-        tools = allowed_tools or DEFAULT_ALLOWED_TOOLS
-        return {
-            "type": "mcp",
-            "server_label": "incident_operations",
-            "server_description": "Synthetic incident investigation and non-executing comment proposals.",
-            "server_url": self.server_url,
-            "allowed_tools": tools,
-            "require_approval": "always",
-        }
+        tools = DEFAULT_ALLOWED_TOOLS if allowed_tools is None else allowed_tools
+        return build_remote_mcp_config(self.server_url, tools)
 
     def run(self, prompt: str, *, user_reference: str = "local-learner") -> dict[str, Any]:
         response = self.client.responses.create(

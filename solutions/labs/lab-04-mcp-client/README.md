@@ -1,19 +1,30 @@
 # Lab 4 Reference Solution
 
-Recorded mode evaluates tool-selection policy without an API key. Inspect mode exercises the MCP protocol directly. Live mode builds a Responses remote-MCP request with `allowed_tools`, `require_approval: always`, a tool-call limit, response storage disabled, and a privacy-preserving safety identifier.
+This solution separates three questions that are often mixed together:
 
-Terminal 1:
+- **Inspect mode:** can a normal MCP client initialize, discover tools, and invoke one?
+- **Recorded mode:** does the intended tool-selection policy handle tool, no-tool, blocked, and refused cases?
+- **Live mode:** can the Responses API import a deliberately bounded remote MCP surface?
 
-```powershell
-..\..\..\.venv\Scripts\python.exe -m lab04.demo_server
+Run the verified suite from this directory:
+
+```bash
+../../../.venv/Scripts/python.exe -m pytest -q -p no:cacheprovider tests
 ```
 
-Terminal 2:
+Expected: `7 passed`.
 
-```powershell
-..\..\..\.venv\Scripts\python.exe -m lab04.cli --mode inspect
-..\..\..\.venv\Scripts\python.exe -m lab04.cli --mode recorded --prompt "Explain incident severity"
-..\..\..\.venv\Scripts\python.exe -m pytest -q
+For manual local inspection, start the server in one terminal:
+
+```bash
+../../../.venv/Scripts/python.exe -m lab04.demo_server
 ```
 
-The OpenAI-hosted Responses API cannot call `localhost`. Live mode requires a reachable HTTPS MCP URL, such as a deliberately configured test deployment or secure tunnel.
+Then run in another:
+
+```bash
+../../../.venv/Scripts/python.exe -m lab04.cli --mode inspect
+../../../.venv/Scripts/python.exe -m lab04.cli --mode recorded --prompt "Explain incident severity"
+```
+
+The hosted Responses API cannot call this local HTTP endpoint. Optional live mode requires an explicitly chosen `OPENAI_MODEL`, an API key, and a deliberately deployed reachable HTTPS MCP endpoint.
