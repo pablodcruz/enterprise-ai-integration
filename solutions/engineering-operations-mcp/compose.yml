@@ -1,0 +1,31 @@
+services:
+  engineering-operations-mcp:
+    build:
+      context: .
+    image: engineering-operations-mcp:recorded
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      GITHUB_MODE: recorded
+      HOST: 0.0.0.0
+      PORT: 8100
+      ALLOWED_REPOSITORIES: acme/engineering-sandbox
+      REQUEST_TIMEOUT_MS: 1000
+    ports:
+      - "8100:8100"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8100/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
