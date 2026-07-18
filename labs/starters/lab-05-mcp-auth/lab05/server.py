@@ -56,7 +56,12 @@ def get_incident(incident_id: Annotated[str, Field(pattern=r"^INC-\d{4}$")]) -> 
     token = ScopePolicy.require(get_access_token(), "incidents:read")
     if incident_id != "INC-1001":
         raise ValueError(f"incident {incident_id} was not found")
-    return {"subject": token.subject, "incident_id": incident_id, "title": "Checkout timeouts", "status": "open"}
+    return {
+        "subject": token.subject,
+        "incident_id": incident_id,
+        "title": "Checkout timeouts",
+        "status": "open",
+    }
 
 
 @mcp.tool(
