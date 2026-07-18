@@ -1,0 +1,15 @@
+{
+  "cases": [
+    {
+      "input": "Checkout requests are timing out for EU customers; errors began after the 14:05 deployment.",
+      "output": {
+        "summary": "Checkout timeouts began after the 14:05 deployment",
+        "affected_service": "checkout",
+        "severity": "SEV2",
+        "customer_impact": "EU customers cannot reliably complete checkout",
+        "evidence": ["Checkout requests are timing out", "EU customers are affected"],
+        "requires_human_review": true
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Hands-on Labs
 
-The labs move from focused protocol exercises to multi-service troubleshooting. Each lab is a learner handout, not a completed solution.
+The labs move from focused protocol exercises to multi-service troubleshooting. Labs 1–5 include runnable starter kits and verified reference solutions; later lab implementations will be added with their corresponding capstone phases.
 
 ## How to Use the Labs
 
@@ -11,6 +11,8 @@ For every lab:
 3. Preserve a short debugging log containing the symptom, evidence, hypothesis, action, and result.
 4. Complete every checkpoint and deliverable.
 5. Attempt the break/fix challenge without looking at the reference solution.
+
+Set up the shared Python environment and run all verified solutions by following [Testing Labs 1–5](../TESTING.md).
 
 ## Sequence
 
@@ -45,3 +47,5 @@ Every learner lab submission should include:
 - Ask learners to predict the next protocol message or service call.
 - Separate model behavior from application, network, identity, and data failures.
 - Keep a deterministic recorded path for classes without external credentials.
+
+The detailed delivery plan for the implemented sequence is in the [Labs 1–5 Instructor Guide](../instructor/labs-01-05.md).

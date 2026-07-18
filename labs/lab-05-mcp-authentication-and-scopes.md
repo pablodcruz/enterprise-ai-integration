@@ -49,3 +49,41 @@ The token signature is valid, but the server returns 403. Use the claims and too
 - Authentication test matrix
 - Sanitized failure evidence
 - Explanation of authentication versus authorization
+
+## Learner Workflow
+
+**Estimated time:** 120–150 minutes
+
+**Prerequisite:** Complete Labs 3 and 4 and understand bearer-token handling.
+
+```powershell
+Push-Location labs\starters\lab-05-mcp-auth
+..\..\..\.venv\Scripts\python.exe -m pytest -q
+```
+
+Implement JWT verification and the scope policy. The verifier must check signature, issuer, audience, expiration, subject, and scope claims. Never print or log tokens.
+
+Verify the solution:
+
+```powershell
+Pop-Location
+Push-Location solutions\labs\lab-05-mcp-auth
+..\..\..\.venv\Scripts\python.exe -m pytest -q
+Pop-Location
+```
+
+Expected solution result: `7 passed`. The integration suite launches a real local MCP subprocess and proves 401 behavior, read access, forbidden proposal access, and successful proposal-scoped access.
+
+## Progressive Hints
+
+<details><summary>Hint 1: Verification</summary>
+Restrict the JWT algorithm explicitly. Require `exp`, `iat`, `iss`, `aud`, `sub`, and `scope`; return no identity when any check fails.
+</details>
+
+<details><summary>Hint 2: 401 versus forbidden</summary>
+Missing or invalid credentials fail at the HTTP boundary. A valid identity without the tool's scope fails at the tool-policy boundary with a controlled forbidden error.
+</details>
+
+<details><summary>Hint 3: Local issuer</summary>
+The included issuer exists only to make the lab deterministic. Keep its secret long enough for HS256 and replace the entire issuer with a production authorization server outside the lab.
+</details>
