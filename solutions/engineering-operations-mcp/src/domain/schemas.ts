@@ -2,6 +2,7 @@ import { z } from "zod/v4";
 
 const ownerPattern = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
 const repositoryPattern = /^[A-Za-z0-9_.-]{1,100}$/;
+export const GithubModeSchema = z.enum(["recorded", "github_app"]);
 
 const RepositoryInputSchema = z.object({
   owner: z.string().trim().regex(ownerPattern, "owner must be a valid GitHub owner"),
@@ -44,7 +45,7 @@ export const IssueSummarySchema = z.object({
 
 export const SearchIssuesOutputSchema = z.object({
   correlationId: z.string().min(1),
-  mode: z.literal("recorded"),
+  mode: GithubModeSchema,
   repository: z.string(),
   query: z.string(),
   items: z.array(IssueSummarySchema).max(20),
@@ -65,7 +66,7 @@ export const IssueDetailsSchema = IssueSummarySchema.extend({
 
 export const GetIssueOutputSchema = z.object({
   correlationId: z.string().min(1),
-  mode: z.literal("recorded"),
+  mode: GithubModeSchema,
   repository: z.string(),
   issue: IssueDetailsSchema,
 });
@@ -90,7 +91,7 @@ export const PullRequestSummarySchema = z.object({
 
 export const ListPullRequestsOutputSchema = z.object({
   correlationId: z.string().min(1),
-  mode: z.literal("recorded"),
+  mode: GithubModeSchema,
   repository: z.string(),
   query: z.string(),
   items: z.array(PullRequestSummarySchema).max(20),
@@ -129,7 +130,7 @@ export const WorkflowRunSummarySchema = z.object({
 
 export const GetWorkflowStatusOutputSchema = z.object({
   correlationId: z.string().min(1),
-  mode: z.literal("recorded"),
+  mode: GithubModeSchema,
   repository: z.string(),
   items: z.array(WorkflowRunSummarySchema).max(20),
   pageInfo: PageInfoSchema,
@@ -159,7 +160,7 @@ export const FailedWorkflowJobSchema = z.object({
 
 export const ListFailedWorkflowJobsOutputSchema = z.object({
   correlationId: z.string().min(1),
-  mode: z.literal("recorded"),
+  mode: GithubModeSchema,
   repository: z.string(),
   runId: z.number().int().positive(),
   items: z.array(FailedWorkflowJobSchema).max(20),

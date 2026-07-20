@@ -2,6 +2,9 @@ export type ProjectErrorCode =
   | "INVALID_ARGUMENT"
   | "REPOSITORY_NOT_ALLOWED"
   | "RESOURCE_NOT_FOUND"
+  | "UPSTREAM_AUTHENTICATION_FAILED"
+  | "UPSTREAM_PERMISSION_DENIED"
+  | "UPSTREAM_RATE_LIMITED"
   | "UPSTREAM_TIMEOUT"
   | "UPSTREAM_FAILURE";
 
@@ -10,20 +13,31 @@ export class ProjectError extends Error {
     readonly code: ProjectErrorCode,
     message: string,
     readonly retryable = false,
-    options?: ErrorOptions,
+    options?: ErrorOptions & { retryAfterSeconds?: number },
   ) {
     super(message, options);
     this.name = "ProjectError";
+    this.retryAfterSeconds = options?.retryAfterSeconds;
   }
+
+  readonly retryAfterSeconds?: number;
 }
 
 export function publicError(error: unknown): {
   code: ProjectErrorCode;
   message: string;
   retryable: boolean;
+  retryAfterSeconds?: number;
 } {
   if (error instanceof ProjectError) {
-    return { code: error.code, message: error.message, retryable: error.retryable };
+    return {
+      code: error.code,
+      message: error.message,
+      retryable: error.retryable,
+      ...(error.retryAfterSeconds === undefined
+        ? {}
+        : { retryAfterSeconds: error.retryAfterSeconds }),
+    };
   }
 
   // Internal exception text can contain filesystem paths, tokens, or upstream

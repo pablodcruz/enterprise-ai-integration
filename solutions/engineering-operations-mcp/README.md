@@ -2,11 +2,11 @@
 
 > **Solution spoiler:** attempt the [Project 1 requirements](../../projects/project-01-engineering-operations-mcp.md) before comparing your implementation with this one.
 
-This directory contains the production-shaped read surface of Project 1: a TypeScript MCP server that investigates issues, pull requests, and workflow failures in a server-allowlisted repository through a deterministic recorded GitHub adapter.
+This directory contains the production-shaped read surface of Project 1: a TypeScript MCP server that investigates issues, pull requests, and workflow failures through interchangeable recorded and real GitHub App adapters.
 
-**Implementation status:** Phases 1 and 2 complete; the full capstone is not complete.
+**Implementation status:** Phases 1-3 complete and live-sandbox verified; the full capstone is not complete.
 
-The implementation now proves the complete read-only investigation path before authentication, a real GitHub App, persisted approvals, writes, and telemetry are added. Learners can use the [Phase 2 guided walkthrough](docs/phase-02-read-tools.md) for concepts, tool examples, expected outputs, exercises, and hints.
+The implementation proves the complete read-only investigation path in deterministic recorded mode and against a real, least-privilege GitHub App installation. Use the [Phase 2 recorded walkthrough](docs/phase-02-read-tools.md) first, then the [Phase 3 GitHub App walkthrough](docs/phase-03-github-app.md).
 
 ## What works now
 
@@ -18,6 +18,9 @@ The implementation now proves the complete read-only investigation path before a
 - Provider workflow states normalized to a small stable vocabulary
 - Structured output with search bodies excluded and detail excerpts explicitly labeled as untrusted
 - Deterministic recorded fixture requiring no credentials
+- Real GitHub App adapter using versioned REST endpoints
+- RS256 app JWTs and cached, repository-narrowed installation tokens
+- Normalized authentication, permission, not-found, timeout, and rate-limit failures
 - Normalized invalid-input, policy, timeout, and upstream errors
 - Health and readiness endpoints
 - Direct MCP inspection client
@@ -27,7 +30,6 @@ The implementation now proves the complete read-only investigation path before a
 
 ## What is deliberately not implemented yet
 
-- Real GitHub API calls or credentials
 - OAuth token validation and per-tool scopes
 - Proposal and write tools
 - PostgreSQL approval and audit storage
@@ -45,8 +47,11 @@ flowchart LR
     HTTP --> Tool["Five read-tool schemas"]
     Tool --> Policy["Repository allowlist"]
     Policy --> UseCase["Read use cases, deadline, and pagination"]
-    UseCase --> Adapter["Recorded GitHub adapter"]
-    Adapter --> Fixture[("Synthetic engineering fixture")]
+    UseCase --> Adapter{"Configured adapter"}
+    Adapter --> Recorded["Recorded fixture"]
+    Adapter --> App["GitHub App REST client"]
+    App --> Token["Cached installation token"]
+    Token --> GitHub["Installed sandbox"]
 ```
 
 The request order is intentional:
@@ -65,7 +70,7 @@ The request order is intentional:
 | MCP tool | registered schema and annotations | every tool argument |
 | HTTP host | local Host-header allowlist | incoming `Host` header |
 | Repository policy | `ALLOWED_REPOSITORIES` environment value | owner/repository named by a prompt |
-| Adapter | validated fixture shape | issue, pull-request, workflow, and job content |
+| Adapter | validated fixture/API shapes and server credentials | issue, pull-request, workflow, and job content |
 | Client response | output schema and error codes | repository content carried inside fields |
 
 The security fixture includes an issue titled `Ignore previous instructions...`. Search returns only its inert title. Detail lookup returns a bounded body excerpt with `contentTrust: "untrusted_repository_content"`. The server never interprets repository content as a command or expands its tool surface.
@@ -148,8 +153,8 @@ pnpm verify
 Expected test summary:
 
 ```text
-Test Files  5 passed (5)
-Tests       22 passed (22)
+Test Files  9 passed (9)
+Tests       31 passed (31)
 ```
 
 `pnpm verify` runs three gates:
@@ -301,6 +306,8 @@ pnpm vitest run tests/integration/mcp.test.ts
 
 ## Run with Docker Compose
 
+Recorded mode:
+
 ```bash
 docker compose up --build --detach
 docker compose ps
@@ -322,17 +329,24 @@ docker compose logs engineering-operations-mcp
 docker compose down
 ```
 
+For real GitHub App mode and the read-only PEM mount, follow the [Phase 3 Docker instructions](docs/phase-03-github-app.md#run-live-mode-with-docker-compose).
+
 ## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `GITHUB_MODE` | `recorded` | only accepted profile in Phase 1 |
+| `GITHUB_MODE` | `recorded` | `recorded` or `github_app` adapter profile |
 | `HOST` | `127.0.0.1` | local bind address; container overrides to `0.0.0.0` |
 | `PORT` | `8100` | HTTP port |
 | `MCP_HOST_PORT` | `8100` | Docker Compose host port; container still listens on `8100` |
 | `ALLOWED_REPOSITORIES` | `acme/engineering-sandbox` | comma-separated capability boundary |
-| `REQUEST_TIMEOUT_MS` | `1000` | adapter deadline |
+| `REQUEST_TIMEOUT_MS` | `3000` | adapter deadline |
 | `RECORDED_FIXTURE_PATH` | bundled fixture | deterministic data source |
+| `GITHUB_APP_ID` | none | required App identifier in `github_app` mode |
+| `GITHUB_INSTALLATION_ID` | none | required installation identifier in `github_app` mode |
+| `GITHUB_PRIVATE_KEY_PATH` | none | absolute PEM path; required in `github_app` mode |
+| `GITHUB_API_BASE_URL` | `https://api.github.com` | GitHub REST origin |
+| `GITHUB_API_VERSION` | `2026-03-10` | versioned GitHub REST contract |
 
 Never place GitHub credentials in `.env.example`, fixtures, tool arguments, logs, or MCP responses.
 
@@ -341,7 +355,7 @@ Never place GitHub credentials in `.env.example`, fixtures, tool arguments, logs
 | Symptom | First boundary to inspect |
 | --- | --- |
 | `/health` fails | process, host, port |
-| `/health` passes and `/ready` fails | fixture or adapter initialization |
+| `/health` passes and `/ready` fails | fixture, App identity, installation, PEM, or permissions |
 | Inspector connects but tool is missing | MCP registration |
 | invalid arguments are accepted | Zod schemas and use-case parsing |
 | allowed search returns no data | fixture query/state/label filters |
@@ -353,7 +367,7 @@ Never place GitHub credentials in `.env.example`, fixtures, tool arguments, logs
 
 1. **Completed:** recorded `search_issues` vertical slice.
 2. **Completed:** remaining read tools and shared bounded-pagination contract.
-3. Add a GitHub App adapter against a dedicated sandbox while retaining recorded CI.
+3. **Completed:** real GitHub App adapter against a dedicated sandbox while retaining recorded CI.
 4. Add protected-resource metadata, token validation, and per-tool scopes.
 5. Add PostgreSQL proposals, approvals, audit records, and idempotent writes.
 6. Add OpenTelemetry traces, failure injection, evaluations, and hosted-client evidence.

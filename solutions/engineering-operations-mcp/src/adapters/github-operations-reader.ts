@@ -44,7 +44,7 @@ export interface FailedWorkflowJobFilters extends PageRequest {
 }
 
 export interface GithubOperationsReader {
-  readonly mode: "recorded";
+  readonly mode: "recorded" | "github_app";
   ping(): Promise<boolean>;
   searchIssues(filters: IssueSearchFilters, signal: AbortSignal): Promise<IssueSummary[]>;
   getIssue(
