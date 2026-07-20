@@ -13,7 +13,7 @@ export interface HttpDependencies {
 
 export function createHttpApp(dependencies: HttpDependencies): Express {
   // Binding to 0.0.0.0 inside a container disables the SDK's automatic
-  // localhost protection, so this recorded profile keeps an explicit Host
+  // localhost protection, so the local/container profiles keep an explicit Host
   // header allowlist. A hosted phase must replace it with deployed hostnames.
   const app = createMcpExpressApp({
     host: dependencies.host,

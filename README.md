@@ -87,4 +87,4 @@ The `projects/` directory contains requirements, acceptance criteria, architectu
 
 ## Current Status
 
-Labs 1-5 include learner starters, deterministic fixtures, progressive hints, executable reference solutions, and automated tests. Engineering Operations MCP now has a complete recorded read surface covering issues, pull requests, and workflow investigation. Its next phase adds a real GitHub App adapter while retaining deterministic recorded-mode CI.
+Labs 1-5 include learner starters, deterministic fixtures, progressive hints, executable reference solutions, and automated tests. Engineering Operations MCP now has both a deterministic recorded read surface and a live-verified, least-privilege GitHub App adapter for issues, pull requests, and workflow investigation. Its next phase adds MCP client authentication and per-tool authorization scopes.

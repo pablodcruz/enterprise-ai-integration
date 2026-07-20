@@ -1,9 +1,9 @@
 {
   "name": "engineering-operations-mcp",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Recorded-mode reference implementation for the Engineering Operations MCP project.",
+  "description": "Dual-mode recorded and GitHub App reference implementation for Engineering Operations MCP.",
   "engines": {
     "node": ">=24.0.0"
   },
@@ -13,6 +13,7 @@
     "dev": "tsx watch src/index.ts",
     "inspect": "tsx src/inspect.ts",
     "start": "tsx src/index.ts",
+    "start:env": "tsx --env-file=.env src/index.ts",
     "start:dist": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
