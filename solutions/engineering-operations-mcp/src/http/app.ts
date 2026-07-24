@@ -3,12 +3,20 @@ import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 import type { GithubOperationsReader } from "../adapters/github-operations-reader.js";
+import {
+  protectedResourceMetadata,
+  requireMcpBearerToken,
+  requireToolScopes,
+  resourceMetadataUrl,
+  type HttpAuthorization,
+} from "../auth/http-authorization.js";
 import { createMcpServer, type ReadToolUseCases } from "../mcp/create-server.js";
 
 export interface HttpDependencies {
   host: string;
   adapter: GithubOperationsReader;
   tools: ReadToolUseCases;
+  auth?: HttpAuthorization;
 }
 
 export function createHttpApp(dependencies: HttpDependencies): Express {
@@ -21,8 +29,24 @@ export function createHttpApp(dependencies: HttpDependencies): Express {
   });
   app.disable("x-powered-by");
 
+  if (dependencies.auth) {
+    const metadataPath = new URL(resourceMetadataUrl(dependencies.auth.resourceUrl)).pathname;
+    app.get(metadataPath, (_request, response) => {
+      response.json(protectedResourceMetadata(dependencies.auth!));
+    });
+    app.use(
+      "/mcp",
+      requireMcpBearerToken(dependencies.auth),
+      requireToolScopes(dependencies.auth),
+    );
+  }
+
   app.get("/health", (_request, response) => {
-    response.json({ status: "ok", mode: dependencies.adapter.mode });
+    response.json({
+      status: "ok",
+      mode: dependencies.adapter.mode,
+      authMode: dependencies.auth ? "jwt" : "disabled",
+    });
   });
 
   app.get("/ready", async (_request, response) => {
@@ -31,7 +55,9 @@ export function createHttpApp(dependencies: HttpDependencies): Express {
   });
 
   app.post("/mcp", async (request: Request, response: Response) => {
-    const server = createMcpServer(dependencies.tools);
+    const server = createMcpServer(dependencies.tools, {
+      enforceScopes: dependencies.auth !== undefined,
+    });
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
@@ -68,5 +94,34 @@ export function createHttpApp(dependencies: HttpDependencies): Express {
   app.get("/mcp", methodNotAllowed);
   app.delete("/mcp", methodNotAllowed);
 
+  app.use(
+    (
+      error: unknown,
+      _request: Request,
+      response: Response,
+      _next: (error?: unknown) => void,
+    ) => {
+      if (response.headersSent) {
+        return;
+      }
+      const status = httpStatus(error) === 400 ? 400 : 500;
+      response.status(status).json({
+        jsonrpc: "2.0",
+        error:
+          status === 400
+            ? { code: -32700, message: "Parse error" }
+            : { code: -32603, message: "Internal server error" },
+        id: null,
+      });
+    },
+  );
+
   return app;
+}
+
+function httpStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== "object" || !("status" in error)) {
+    return undefined;
+  }
+  return typeof error.status === "number" ? error.status : undefined;
 }

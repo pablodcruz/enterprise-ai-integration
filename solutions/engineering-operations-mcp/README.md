@@ -4,9 +4,9 @@
 
 This directory contains the production-shaped read surface of Project 1: a TypeScript MCP server that investigates issues, pull requests, and workflow failures through interchangeable recorded and real GitHub App adapters.
 
-**Implementation status:** Phases 1-3 complete and live-sandbox verified; the full capstone is not complete.
+**Implementation status:** Phases 1-4 complete and verified; the full capstone is not complete.
 
-The implementation proves the complete read-only investigation path in deterministic recorded mode and against a real, least-privilege GitHub App installation. Use the [Phase 2 recorded walkthrough](docs/phase-02-read-tools.md) first, then the [Phase 3 GitHub App walkthrough](docs/phase-03-github-app.md).
+The implementation proves the complete authenticated, read-only investigation path in deterministic recorded mode and against a real, least-privilege GitHub App installation. Use the [Phase 2 recorded walkthrough](docs/phase-02-read-tools.md), the [Phase 3 GitHub App walkthrough](docs/phase-03-github-app.md), and then the [Phase 4 authorization walkthrough](docs/phase-04-auth-scopes.md).
 
 ## What works now
 
@@ -20,6 +20,10 @@ The implementation proves the complete read-only investigation path in determini
 - Deterministic recorded fixture requiring no credentials
 - Real GitHub App adapter using versioned REST endpoints
 - RS256 app JWTs and cached, repository-narrowed installation tokens
+- OAuth protected-resource metadata and discoverable bearer challenges
+- RS256 access-token validation for signature, issuer, audience, expiration, and subject
+- Per-tool `repo:read`, `issues:read`, and `actions:read` authorization scopes
+- Remote JWKS and pinned local public-key verification profiles
 - Normalized authentication, permission, not-found, timeout, and rate-limit failures
 - Normalized invalid-input, policy, timeout, and upstream errors
 - Health and readiness endpoints
@@ -30,7 +34,6 @@ The implementation proves the complete read-only investigation path in determini
 
 ## What is deliberately not implemented yet
 
-- OAuth token validation and per-tool scopes
 - Proposal and write tools
 - PostgreSQL approval and audit storage
 - Human approval and idempotent write execution
@@ -44,7 +47,9 @@ Those omissions are phase boundaries, not hidden features. Do not describe this 
 ```mermaid
 flowchart LR
     Client["MCP Inspector or direct client"] --> HTTP["Stateless Streamable HTTP"]
-    HTTP --> Tool["Five read-tool schemas"]
+    HTTP --> Identity["JWT validation"]
+    Identity --> Scope["Per-tool scope"]
+    Scope --> Tool["Five read-tool schemas"]
     Tool --> Policy["Repository allowlist"]
     Policy --> UseCase["Read use cases, deadline, and pagination"]
     UseCase --> Adapter{"Configured adapter"}
@@ -56,12 +61,14 @@ flowchart LR
 
 The request order is intentional:
 
-1. MCP validates the tool schema.
-2. The use case validates again so non-MCP callers receive the same contract.
-3. Repository policy checks untrusted `owner` and `repository` input.
-4. Only an allowed repository reaches the adapter.
-5. The adapter reads recorded data under a bounded deadline and bounded page request.
-6. The result is projected into a small output schema before entering model context.
+1. The HTTP boundary validates the bearer token for this resource.
+2. The authorization boundary checks the specific tool scope.
+3. MCP validates the tool schema.
+4. The use case validates again so non-MCP callers receive the same contract.
+5. Repository policy checks untrusted `owner` and `repository` input.
+6. Only an allowed repository reaches the adapter.
+7. The adapter reads data under a bounded deadline and bounded page request.
+8. The result is projected into a small output schema before entering model context.
 
 ## Trust boundaries
 
@@ -69,6 +76,8 @@ The request order is intentional:
 | --- | --- | --- |
 | MCP tool | registered schema and annotations | every tool argument |
 | HTTP host | local Host-header allowlist | incoming `Host` header |
+| MCP identity | trusted issuer, audience, and verification key | bearer token and its claims |
+| Tool scope | server-owned tool-to-scope map | scopes granted by the token |
 | Repository policy | `ALLOWED_REPOSITORIES` environment value | owner/repository named by a prompt |
 | Adapter | validated fixture/API shapes and server credentials | issue, pull-request, workflow, and job content |
 | Client response | output schema and error codes | repository content carried inside fields |
@@ -92,6 +101,7 @@ Routine syntax is left uncommented. The README explains workflows and architectu
 ```text
 src/
   adapters/       Replaceable GitHub reader contract and recorded implementation
+  auth/           GitHub App auth, MCP JWT validation, metadata, and scopes
   domain/         Zod input/output schemas and stable error vocabulary
   http/           Health, readiness, and Streamable HTTP routes
   mcp/            Tool registration and MCP response boundary
@@ -153,8 +163,8 @@ pnpm verify
 Expected test summary:
 
 ```text
-Test Files  9 passed (9)
-Tests       31 passed (31)
+Test Files  11 passed (11)
+Tests       45 passed (45)
 ```
 
 `pnpm verify` runs three gates:
@@ -174,7 +184,7 @@ pnpm start
 Expected startup event:
 
 ```json
-{"event":"server_started","host":"127.0.0.1","port":8100,"mode":"recorded","allowedRepositories":["acme/engineering-sandbox"]}
+{"event":"server_started","host":"127.0.0.1","port":8100,"mode":"recorded","authMode":"disabled","allowedRepositories":["acme/engineering-sandbox"]}
 ```
 
 Terminal 2:
@@ -188,7 +198,7 @@ pnpm inspect
 Expected health responses:
 
 ```json
-{"status":"ok","mode":"recorded"}
+{"status":"ok","mode":"recorded","authMode":"disabled"}
 {"status":"ready"}
 ```
 
@@ -253,6 +263,9 @@ Call `search_issues` with:
 
 Then follow the [Phase 2 guided walkthrough](docs/phase-02-read-tools.md) to call the other four tools and perform the end-to-end incident investigation.
 
+For a protected Inspector connection, generate the local development keys,
+mint a token, and follow the [Phase 4 authorization walkthrough](docs/phase-04-auth-scopes.md).
+
 ## Tool contracts
 
 | Tool | Required input | Bounded behavior | Safe output |
@@ -284,6 +297,8 @@ Callers should request the next page only when `hasNextPage` is true. The schema
 | --- | --- | --- |
 | `INVALID_ARGUMENT` | input violates the application contract | no |
 | `REPOSITORY_NOT_ALLOWED` | repository is outside server policy | no |
+| `UNAUTHENTICATED` | a defense-in-depth tool call has no validated identity | no |
+| `INSUFFICIENT_SCOPE` | a defense-in-depth tool call lacks its required scope | no |
 | `RESOURCE_NOT_FOUND` | requested issue or workflow run does not exist | no |
 | `UPSTREAM_TIMEOUT` | adapter exceeded its deadline | yes |
 | `UPSTREAM_FAILURE` | adapter failed without a safe public detail | no |
@@ -293,9 +308,9 @@ Callers should request the next page only when `hasNextPage` is true. The schema
 | Test group | What it proves |
 | --- | --- |
 | Contract | safe projections, normalized statuses, shared pagination, not-found behavior, timeout |
-| Security | policy runs before every adapter path; hostile content remains labeled data |
-| HTTP | liveness/readiness and unsupported methods |
-| MCP integration | real initialize/list/call and controlled denial |
+| Security | policy, JWT claims, signature, audience, expiry, and hostile-content boundaries |
+| HTTP | liveness/readiness, protected-resource metadata, `401`, and `403` challenges |
+| MCP integration | real initialize/list/call with disabled and authenticated profiles |
 
 Run a focused group:
 
@@ -331,6 +346,8 @@ docker compose down
 
 For real GitHub App mode and the read-only PEM mount, follow the [Phase 3 Docker instructions](docs/phase-03-github-app.md#run-live-mode-with-docker-compose).
 
+For JWT-protected recorded or live mode, follow the [Phase 4 Docker instructions](docs/phase-04-auth-scopes.md#docker-verification).
+
 ## Configuration
 
 | Variable | Default | Purpose |
@@ -347,8 +364,15 @@ For real GitHub App mode and the read-only PEM mount, follow the [Phase 3 Docker
 | `GITHUB_PRIVATE_KEY_PATH` | none | absolute PEM path; required in `github_app` mode |
 | `GITHUB_API_BASE_URL` | `https://api.github.com` | GitHub REST origin |
 | `GITHUB_API_VERSION` | `2026-03-10` | versioned GitHub REST contract |
+| `MCP_AUTH_MODE` | `disabled` | isolated local mode or JWT-protected resource server |
+| `MCP_RESOURCE_URL` | `http://127.0.0.1:8100/mcp` | canonical RFC 8707 resource identifier |
+| `MCP_AUTH_ISSUER` | none | trusted authorization-server issuer in JWT mode |
+| `MCP_AUTH_AUDIENCE` | resource URL | expected access-token audience |
+| `MCP_AUTH_JWKS_URL` | none | remote issuer verification keys; mutually exclusive with public-key path |
+| `MCP_AUTH_PUBLIC_KEY_PATH` | none | local pinned RS256 public key for the self-contained exercise |
+| `MCP_AUTH_CLOCK_TOLERANCE_SECONDS` | `5` | bounded JWT clock-skew tolerance |
 
-Never place GitHub credentials in `.env.example`, fixtures, tool arguments, logs, or MCP responses.
+Never place GitHub credentials, MCP access tokens, or private signing keys in `.env.example`, fixtures, tool arguments, logs, traces, or MCP responses.
 
 ## Break/fix guide
 
@@ -356,6 +380,8 @@ Never place GitHub credentials in `.env.example`, fixtures, tool arguments, logs
 | --- | --- |
 | `/health` fails | process, host, port |
 | `/health` passes and `/ready` fails | fixture, App identity, installation, PEM, or permissions |
+| `/mcp` returns `401` | missing, expired, wrong-issuer, wrong-audience, or invalid-signature token |
+| one tool returns `403` | that tool's required scope and the token's granted scopes |
 | Inspector connects but tool is missing | MCP registration |
 | invalid arguments are accepted | Zod schemas and use-case parsing |
 | allowed search returns no data | fixture query/state/label filters |
@@ -368,7 +394,7 @@ Never place GitHub credentials in `.env.example`, fixtures, tool arguments, logs
 1. **Completed:** recorded `search_issues` vertical slice.
 2. **Completed:** remaining read tools and shared bounded-pagination contract.
 3. **Completed:** real GitHub App adapter against a dedicated sandbox while retaining recorded CI.
-4. Add protected-resource metadata, token validation, and per-tool scopes.
+4. **Completed:** protected-resource metadata, audience-bound JWT validation, and per-tool scopes.
 5. Add PostgreSQL proposals, approvals, audit records, and idempotent writes.
 6. Add OpenTelemetry traces, failure injection, evaluations, and hosted-client evidence.
 
@@ -379,5 +405,6 @@ Each phase must keep the previous recorded tests passing.
 - [MCP TypeScript SDK server guide](https://ts.sdk.modelcontextprotocol.io/server)
 - [MCP TypeScript SDK repository](https://github.com/modelcontextprotocol/typescript-sdk)
 - [MCP Streamable HTTP specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)
+- [MCP authorization specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization)
 - [Node.js release schedule](https://nodejs.org/en/about/previous-releases)
 - [pnpm build-script allowlist settings](https://pnpm.io/settings#allowbuilds)

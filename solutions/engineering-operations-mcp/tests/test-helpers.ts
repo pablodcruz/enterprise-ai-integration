@@ -2,8 +2,11 @@ import type { Server } from "node:http";
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 
 import type { GithubOperationsReader } from "../src/adapters/github-operations-reader.js";
+import type { HttpAuthorization } from "../src/auth/http-authorization.js";
+import { MCP_READ_SCOPES } from "../src/auth/scopes.js";
 import { RecordedGithubAdapter } from "../src/adapters/recorded-github-adapter.js";
 import { createHttpApp } from "../src/http/app.js";
 import type { ReadToolUseCases } from "../src/mcp/create-server.js";
@@ -200,16 +203,50 @@ export function useCase(
   return createUseCases(adapter, timeoutMs).searchIssues;
 }
 
-export function testApp(adapter: GithubOperationsReader = recordedAdapter()) {
+export function testApp(
+  adapter: GithubOperationsReader = recordedAdapter(),
+  auth?: HttpAuthorization,
+) {
   return createHttpApp({
     host: "127.0.0.1",
     adapter,
     tools: createUseCases(adapter),
+    auth,
   });
 }
 
-export async function startMcpClient(): Promise<{ client: Client; server: Server }> {
-  const app = testApp();
+export function testAuthorization(
+  tokens: Readonly<Record<string, readonly string[]>> = { valid: MCP_READ_SCOPES },
+): HttpAuthorization {
+  const resourceUrl = new URL("http://127.0.0.1:8100/mcp");
+  return {
+    resourceUrl,
+    authorizationServerUrl: new URL("https://auth.example.test"),
+    documentationUrl: new URL("https://docs.example.test/engineering-operations-mcp"),
+    verifier: {
+      async verifyAccessToken(token: string): Promise<AuthInfo> {
+        const scopes = tokens[token];
+        if (!scopes) {
+          throw new Error("invalid test token");
+        }
+        return {
+          token,
+          clientId: "test-client",
+          scopes: [...scopes],
+          expiresAt: Math.floor(Date.now() / 1000) + 300,
+          resource: resourceUrl,
+          extra: { subject: "test-user" },
+        };
+      },
+    },
+  };
+}
+
+export async function startMcpClient(options: {
+  auth?: HttpAuthorization;
+  accessToken?: string;
+} = {}): Promise<{ client: Client; server: Server }> {
+  const app = testApp(recordedAdapter(), options.auth);
   const server = await new Promise<Server>((resolve) => {
     const listener = app.listen(0, "127.0.0.1", () => resolve(listener));
   });
@@ -219,7 +256,11 @@ export async function startMcpClient(): Promise<{ client: Client; server: Server
   }
   const client = new Client({ name: "project-01-test-client", version: "0.2.0" });
   await client.connect(
-    new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${address.port}/mcp`)),
+    new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${address.port}/mcp`), {
+      ...(options.accessToken
+        ? { requestInit: { headers: { Authorization: `Bearer ${options.accessToken}` } } }
+        : {}),
+    }),
   );
   return { client, server };
 }

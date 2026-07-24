@@ -1,9 +1,9 @@
 {
   "name": "engineering-operations-mcp",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "Dual-mode recorded and GitHub App reference implementation for Engineering Operations MCP.",
+  "description": "Authenticated, dual-mode reference implementation for Engineering Operations MCP.",
   "engines": {
     "node": ">=24.0.0"
   },
@@ -12,6 +12,8 @@
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsx watch src/index.ts",
     "inspect": "tsx src/inspect.ts",
+    "auth:keygen": "tsx scripts/generate-dev-auth-keys.ts",
+    "auth:token": "tsx scripts/mint-dev-access-token.ts",
     "start": "tsx src/index.ts",
     "start:env": "tsx --env-file=.env src/index.ts",
     "start:dist": "node dist/index.js",
@@ -23,6 +25,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
     "express": "5.2.1",
+    "jose": "6.2.3",
     "zod": "4.4.3"
   },
   "devDependencies": {
