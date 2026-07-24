@@ -15,5 +15,6 @@ These notes provide the conceptual foundation for the hands-on curriculum. They 
 | [Agent Runtime, Safety, and Evaluation](03-agent-runtime-safety-and-evaluation.md) | How do state, approvals, guardrails, and traces change agent behavior? |
 | [RAG Systems and Evaluation](04-rag-systems-and-evaluation.md) | How do we retrieve authorized evidence and prove answer quality? |
 | [Cloud Operations and Live Troubleshooting](05-cloud-operations-and-live-troubleshooting.md) | How do we operate and debug a multi-service AI lab? |
+| [Codex Workstreams, Threads, Memory, and Computer Use](06-codex-workstreams-and-computer-use.md) | How do goals, durable context, bounded threads, Computer Use, and evidence loops fit together? |
 
 Each note ends with review questions and teaching prompts. Use the [Study Lab](../study/README.md) for randomized recall practice.
