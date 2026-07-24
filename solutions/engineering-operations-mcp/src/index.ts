@@ -10,6 +10,7 @@ const listener = app.listen(config.port, config.host, () => {
       host: config.host,
       port: config.port,
       mode: config.mode,
+      authMode: config.auth.mode,
       allowedRepositories: [...config.allowedRepositories],
     }),
   );

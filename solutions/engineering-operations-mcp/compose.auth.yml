@@ -1,0 +1,16 @@
+services:
+  engineering-operations-mcp:
+    image: engineering-operations-mcp:auth
+    environment:
+      MCP_AUTH_MODE: jwt
+      MCP_RESOURCE_URL: ${MCP_RESOURCE_URL:-http://127.0.0.1:8114/mcp}
+      MCP_AUTH_ISSUER: ${MCP_AUTH_ISSUER:-https://auth.example.test}
+      MCP_AUTH_AUDIENCE: ${MCP_AUTH_AUDIENCE:-http://127.0.0.1:8114/mcp}
+      MCP_AUTH_PUBLIC_KEY_PATH: /run/config/mcp-auth-public.pem
+      MCP_AUTH_CLOCK_TOLERANCE_SECONDS: ${MCP_AUTH_CLOCK_TOLERANCE_SECONDS:-5}
+      MCP_RESOURCE_DOCUMENTATION_URL: ${MCP_RESOURCE_DOCUMENTATION_URL:-https://github.com/pablodcruz/enterprise-ai-integration/tree/main/solutions/engineering-operations-mcp}
+    volumes:
+      - type: bind
+        source: ${MCP_AUTH_PUBLIC_KEY_PATH:-./.local/auth/public.pem}
+        target: /run/config/mcp-auth-public.pem
+        read_only: true

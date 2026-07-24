@@ -11,8 +11,13 @@ const [
 ] = process.argv.slice(2);
 const issueNumber = positiveInteger(issueNumberText, "issue number");
 const runId = positiveInteger(runIdText, "workflow run ID");
-const client = new Client({ name: "project-01-inspector", version: "0.3.0" });
-const transport = new StreamableHTTPClientTransport(new URL(serverUrl));
+const accessToken = process.env.MCP_ACCESS_TOKEN;
+const client = new Client({ name: "project-01-inspector", version: "0.4.0" });
+const transport = new StreamableHTTPClientTransport(new URL(serverUrl), {
+  ...(accessToken
+    ? { requestInit: { headers: { Authorization: `Bearer ${accessToken}` } } }
+    : {}),
+});
 const repositoryInput = { owner, repository };
 
 try {
@@ -42,7 +47,15 @@ try {
   console.log(
     JSON.stringify(
       {
-        target: { serverUrl, owner, repository, query, issueNumber, runId },
+        target: {
+          serverUrl,
+          owner,
+          repository,
+          query,
+          issueNumber,
+          runId,
+          bearerTokenConfigured: accessToken !== undefined,
+        },
         toolNames: tools.tools.map((tool) => tool.name),
         search: evidence(search),
         issue: evidence(issue),
